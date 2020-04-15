@@ -14,7 +14,7 @@ lazy_static! {
 }
 
 fn main() {
-    Compiler::compile("./countdown.asm");
+    Compiler::compile_path("./countdown.asm");
 }
 
 #[derive(Parser)]
@@ -22,10 +22,20 @@ fn main() {
 struct Compiler;
 
 impl Compiler {
-    fn compile(input: impl AsRef<Path>) {
+    fn compile_path(input: impl AsRef<Path>) {
         let unparsed_file = fs::read_to_string(&input).expect("cannot read file");
 
-        let parsed = Compiler::parse(Rule::file, &unparsed_file)
+        let compiled_string = Compiler::compile_str(&unparsed_file);
+
+        let out_path = input.as_ref().with_extension("rom");
+
+        let mut out_file = fs::File::create(out_path).unwrap();
+
+        let _ = out_file.write(compiled_string.as_bytes());
+    }
+
+    fn compile_str(input: &str) -> String {
+        let parsed = Compiler::parse(Rule::file, input)
             .unwrap_or_else(|e| panic!("{}", e))
             .next()
             .unwrap();
@@ -37,17 +47,17 @@ impl Compiler {
             .map(Command::from)
             .collect::<Vec<_>>();
 
-        let out_path = input.as_ref().with_extension("rom");
+        let mut out_string = String::new();
 
-        let mut out_file = fs::File::create(out_path).unwrap();
-
-        let _ = out_file.write(b"v2.0 raw\n");
+        out_string.push_str("v2.0 raw\n");
 
         for command in commands.iter() {
             let bits = command.compile();
             let hex = format!("{:04X} ", bits);
-            let _ = out_file.write(hex.as_bytes());
+            out_string.push_str(&hex);
         }
+
+        out_string
     }
 }
 
@@ -291,5 +301,42 @@ impl<'a> Bits<'a> for Operand<'a> {
 
     fn bits(&self) -> u8 {
         2
+    }
+}
+
+mod test {
+    #[test]
+    fn test_compiler() {
+        use crate::Compiler;
+
+        let control = "v2.0 raw
+9401 0001 3000 3000 3000 3000 2801 3000 3000 9C00 4BF6 2A01 9C09 5F00 ";
+
+        let asm = "
+start: 		li rB 1             # test comment
+
+new: 	    add rA rA rB
+            nop
+            nop
+            nop
+            nop
+
+# test comment on a blank link
+
+first: 	    sub rC rA rB
+            nop
+            nop                
+                    
+loop: 	    li rD 0
+            beq rC rD new
+            sub rC rC rB
+                li rD loop
+
+jump:	    jalr rD rD
+";
+
+        let compiled_string = Compiler::compile_str(asm);
+
+        assert_eq!(compiled_string, control);
     }
 }
