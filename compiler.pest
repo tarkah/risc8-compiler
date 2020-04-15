@@ -1,0 +1,22 @@
+char = _{ ASCII_ALPHA }
+digit = _{ ASCII_DIGIT }
+
+word = @{ char+ ~ ("_" ~ char+)* }
+number = @{ "-"? ~ digit+ }
+
+label = @{ ( word | digit+ ) ~ ":" }
+opcode = @{ char{1,4} }
+register = @{ "r" ~ 'A'..'D' }
+operand = { register | word | number }
+
+blank_line = { WHITESPACE* ~ COMMENT? ~ NEWLINE }
+line = { label? ~ opcode ~ operand* ~ COMMENT? ~ NEWLINE }
+
+WHITESPACE = _{ " " | "\t" }
+COMMENT = _{ "#"+ ~ (!"\n" ~ ANY)* }
+
+file = {
+    SOI ~
+    (line | blank_line)* ~
+    EOI
+}
