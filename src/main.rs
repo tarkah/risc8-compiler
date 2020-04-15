@@ -45,7 +45,7 @@ impl Compiler {
 
         for command in commands.iter() {
             let bits = command.compile();
-            let hex = format!("{:04x} ", bits);
+            let hex = format!("{:04X} ", bits);
             let _ = out_file.write(hex.as_bytes());
         }
     }
