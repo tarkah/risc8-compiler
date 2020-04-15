@@ -113,10 +113,11 @@ impl<'a> From<(usize, Pair<'a, Rule>)> for Command<'a> {
         for pair in pairs.into_inner() {
             match pair.as_rule() {
                 Rule::label => {
+                    let interior = pair.into_inner().next().unwrap();
                     LABELS
                         .lock()
                         .unwrap()
-                        .insert(pair.as_span().as_str().to_owned(), index);
+                        .insert(interior.as_span().as_str().to_owned(), index);
                 }
                 Rule::opcode => {
                     opcode = Some(Opcode::from(pair));
@@ -221,7 +222,7 @@ impl<'a> From<Pair<'a, Rule>> for Operand<'a> {
                 }
             }),
             Rule::number => Operand::Immediate(inner.as_span().as_str().parse::<u8>().unwrap()),
-            Rule::word => Operand::Label(inner.as_span().as_str()),
+            Rule::label_interior => Operand::Label(inner.as_span().as_str()),
             _ => panic!("unreachable, Operand created from incorrect Rule"),
         }
     }
@@ -284,10 +285,7 @@ impl<'a> Bits<'a> for Operand<'a> {
         match self {
             Operand::Register(r) => r.unpacked(),
             Operand::Immediate(i) => *i,
-            Operand::Label(label) => {
-                let label = &format!("{}:", label);
-                *LABELS.lock().unwrap().get(label).unwrap() as u8
-            }
+            Operand::Label(label) => *LABELS.lock().unwrap().get(label.to_owned()).unwrap() as u8,
         }
     }
 

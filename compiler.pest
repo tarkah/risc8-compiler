@@ -4,10 +4,12 @@ digit = _{ ASCII_DIGIT }
 word = @{ char+ ~ ("_" ~ char+)* }
 number = @{ "-"? ~ digit+ }
 
-label = @{ ( word | digit+ ) ~ ":" }
+label = ${ label_interior ~ ":" }
+label_interior = @{ word | digit+ }
+
 opcode = @{ char{1,4} }
 register = @{ "r" ~ 'A'..'D' }
-operand = { register | word | number }
+operand = { register | number | label_interior }
 
 blank_line = { WHITESPACE* ~ COMMENT? ~ NEWLINE }
 line = { label? ~ opcode ~ operand* ~ COMMENT? ~ NEWLINE }
